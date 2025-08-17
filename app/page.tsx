@@ -32,6 +32,13 @@ export default function TradingCalculator() {
   const [standardLotSize, setStandardLotSize] = useState<string>("0.50")
   const [customInstruments, setCustomInstruments] = useState<Instrument[]>([])
   const [calculatedVolume, setCalculatedVolume] = useState<number | null>(null)
+  const [calculationBreakdown, setCalculationBreakdown] = useState<{
+    step1: number
+    step2: number
+    step3: number
+    step4: number
+    finalVolume: number
+  } | null>(null)
 
   // Custom instrument form
   const [newInstrumentName, setNewInstrumentName] = useState<string>("")
@@ -78,19 +85,29 @@ export default function TradingCalculator() {
     const lotSize = Number.parseFloat(standardLotSize)
 
     if (risk > 0 && costPerUnit > 0 && stopLoss > 0 && conversionFactor > 0 && lotSize > 0) {
-      // Calculate total dollar cost (cost per unit * stop loss points)
-      const totalDollarCost = costPerUnit * stopLoss
+      // Step 1: Maximum dollar risk (already provided by user)
+      const step1MaxRisk = risk
 
-      // Calculate trade volume
-      const tradeVolume = risk / totalDollarCost
+      // Step 2: Calculate the dollar cost of stop loss for single unit
+      const step2DollarCost = costPerUnit * stopLoss
 
-      // Convert units to volume
-      const finalVolume = tradeVolume * conversionFactor
+      // Step 3: Calculate required trade volume (units needed)
+      const step3TradeUnits = risk / step2DollarCost
+
+      // Step 4: Convert units to volume
+      const step4Volume = step3TradeUnits * conversionFactor
 
       // Round down to nearest standard lot size
-      const roundedVolume = Math.floor(finalVolume / lotSize) * lotSize
+      const finalVolume = Math.floor(step4Volume / lotSize) * lotSize
 
-      setCalculatedVolume(roundedVolume)
+      setCalculatedVolume(finalVolume)
+      setCalculationBreakdown({
+        step1: step1MaxRisk,
+        step2: step2DollarCost,
+        step3: step3TradeUnits,
+        step4: step4Volume,
+        finalVolume: finalVolume,
+      })
     }
   }
 
@@ -232,17 +249,68 @@ export default function TradingCalculator() {
                 Calculate Volume
               </Button>
 
-              {calculatedVolume !== null && (
-                <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800 dark:text-green-200">
-                    <strong>Calculated Trade Volume: {calculatedVolume.toFixed(2)} lots</strong>
-                    <br />
-                    <span className="text-sm text-green-600 dark:text-green-300">
-                      Volume rounded down to nearest standard lot size
-                    </span>
-                  </AlertDescription>
-                </Alert>
+              {calculatedVolume !== null && calculationBreakdown && (
+                <div className="space-y-4">
+                  <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      <strong>Final Trade Volume: {calculatedVolume.toFixed(2)} lots</strong>
+                      <br />
+                      <span className="text-sm text-green-600 dark:text-green-300">
+                        Volume rounded down to nearest standard lot size
+                      </span>
+                    </AlertDescription>
+                  </Alert>
+
+                  {/* Automated Calculation Breakdown */}
+                  <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-blue-800 dark:text-blue-200">
+                        Automated Calculation Breakdown
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                        <span className="font-medium">Step 1: Maximum Dollar Risk</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-mono">
+                          ${calculationBreakdown.step1.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                        <span className="font-medium">Step 2: Dollar Cost of Stop Loss</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-mono">
+                          {stopLossPoints} pts × ${dollarCostPerUnit} = ${calculationBreakdown.step2.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                        <span className="font-medium">Step 3: Required Trade Units</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-mono">
+                          ${calculationBreakdown.step1.toFixed(2)} ÷ ${calculationBreakdown.step2.toFixed(2)} ={" "}
+                          {calculationBreakdown.step3.toFixed(2)} units
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                        <span className="font-medium">Step 4: Convert to Volume</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-mono">
+                          {calculationBreakdown.step3.toFixed(2)} × {unitToVolumeConversion} ={" "}
+                          {calculationBreakdown.step4.toFixed(3)} volume
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center p-2 bg-green-100 dark:bg-green-900/30 rounded border border-green-200 dark:border-green-800">
+                        <span className="font-semibold text-green-800 dark:text-green-200">
+                          Final: Rounded to Lot Size
+                        </span>
+                        <span className="text-green-700 dark:text-green-300 font-mono font-semibold">
+                          {calculationBreakdown.finalVolume.toFixed(2)} lots
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </CardContent>
           </Card>
