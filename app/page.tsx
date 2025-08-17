@@ -185,6 +185,21 @@ export default function TradingCalculator() {
     setEditConversion("")
   }
 
+  const resetInstrumentToDefault = (instrumentName: string) => {
+    // Remove the custom version of this instrument
+    setCustomInstruments(customInstruments.filter((inst) => inst.name !== instrumentName))
+
+    // If this is the currently selected instrument, update the form values to default
+    if (selectedInstrument === instrumentName) {
+      const defaultInstrument = DEFAULT_INSTRUMENTS.find((inst) => inst.name === instrumentName)
+      if (defaultInstrument) {
+        setDollarCostPerUnit(defaultInstrument.dollarCostPerUnit.toString())
+        setUnitToVolumeConversion(defaultInstrument.unitToVolumeConversion.toString())
+        setStandardLotSize(defaultInstrument.standardLotSize.toString())
+      }
+    }
+  }
+
   const selectedInstrumentData = allInstruments.find((i) => i.name === selectedInstrument)
   const maxDollarRisk = Number.parseFloat(tradingCapital) * (Number.parseFloat(riskPercentage) / 100)
 
@@ -387,6 +402,9 @@ export default function TradingCalculator() {
                             {allInstrumentNames.map((instrumentName) => {
                               const instrumentData = getInstrumentData(instrumentName)
                               const isDefault = !customInstruments.some((inst) => inst.name === instrumentName)
+                              const hasCustomVersion =
+                                DEFAULT_INSTRUMENTS.some((def) => def.name === instrumentName) &&
+                                customInstruments.some((custom) => custom.name === instrumentName)
 
                               return (
                                 <div
@@ -401,20 +419,45 @@ export default function TradingCalculator() {
                                           Default
                                         </span>
                                       )}
+                                      {hasCustomVersion && (
+                                        <span className="px-2 py-1 text-xs bg-orange-100 text-orange-600 rounded">
+                                          Modified
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="text-sm text-gray-600">
                                       Cost: ${instrumentData.dollarCostPerUnit} | Conversion:{" "}
                                       {instrumentData.unitToVolumeConversion} | Lot: {instrumentData.standardLotSize}
                                     </div>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => startEditingInstrument(instrumentData)}
-                                    className="text-blue-600 hover:bg-blue-50"
-                                  >
-                                    <Settings className="h-4 w-4" />
-                                  </Button>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => startEditingInstrument(instrumentData)}
+                                      className="text-blue-600 hover:bg-blue-50"
+                                    >
+                                      <Settings className="h-4 w-4" />
+                                    </Button>
+                                    {hasCustomVersion && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => resetInstrumentToDefault(instrumentName)}
+                                        className="text-orange-600 hover:bg-orange-50"
+                                        title="Reset to default values"
+                                      >
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                          />
+                                        </svg>
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               )
                             })}
